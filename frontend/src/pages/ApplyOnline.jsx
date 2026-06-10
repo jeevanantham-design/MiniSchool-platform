@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { User, Users, MapPin, FileText, Image as ImageIcon, File, ShieldCheck, Info, Calendar, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const ApplyOnline = () => {
   const [formData, setFormData] = useState({
     studentName: '',
@@ -31,6 +33,7 @@ const ApplyOnline = () => {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [generatedId, setGeneratedId] = useState('');
   const navigate = useNavigate();
@@ -39,25 +42,43 @@ const ApplyOnline = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.studentName || !formData.classApplying) {
       alert("Please fill in the Student Name and Class Applying For at minimum.");
       return;
     }
 
-    const newId = `MMS-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const applicationData = {
-      id: newId,
-      name: formData.studentName,
-      grade: formData.classApplying,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      status: 'Approved'
-    };
+    setIsSubmitting(true);
 
-    localStorage.setItem(`monisha_app_${newId}`, JSON.stringify(applicationData));
-    setGeneratedId(newId);
-    setIsSubmitted(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/applications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...formData,
+          photoFileName: files.photo?.name || '',
+          birthCertFileName: files.birthCert?.name || '',
+          marksheetFileName: files.marksheet?.name || ''
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Unable to submit application.');
+      }
+
+      localStorage.setItem(`monisha_app_${result.id}`, JSON.stringify(result));
+      setGeneratedId(result.id);
+      setIsSubmitted(true);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -324,8 +345,8 @@ const ApplyOnline = () => {
                 <button type="button" className="flex-1 md:flex-none px-6 py-3.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">
                   Draft Save
                 </button>
-                <button type="submit" className="flex-1 md:flex-none px-8 py-3.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-colors">
-                  Submit Application
+                <button type="submit" disabled={isSubmitting} className="flex-1 md:flex-none px-8 py-3.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed shadow-md transition-colors">
+                  {isSubmitting ? 'Submitting...' : 'Submit Application'}
                 </button>
               </div>
             </div>

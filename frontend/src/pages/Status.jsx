@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Hash, BadgeCheck, Download, CreditCard, Clock, FileText, CheckCircle2, AlertCircle, Users, Award, ShieldCheck } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const fallbackMock = {
   id: 'MMS-2026-9842',
@@ -11,7 +13,7 @@ const fallbackMock = {
   status: 'Approved'
 };
 
-const findApplication = (applicationId) => {
+const findLocalApplication = (applicationId) => {
   const normalizedId = applicationId.trim();
   if (!normalizedId) {
     return { appData: null, error: '', searched: false };
@@ -33,25 +35,86 @@ const findApplication = (applicationId) => {
   };
 };
 
+const fetchApplication = async (applicationId) => {
+  const normalizedId = applicationId.trim();
+  if (!normalizedId) {
+    return { appData: null, error: '', searched: false };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/applications/${encodeURIComponent(normalizedId)}`);
+    const result = await response.json();
+
+    if (response.status === 404) {
+      return { appData: null, error: result.message, searched: true };
+    }
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Unable to check application status.');
+    }
+
+    return { appData: result, error: '', searched: true };
+  } catch (error) {
+    const localResult = findLocalApplication(normalizedId);
+    if (localResult.appData) {
+      return localResult;
+    }
+
+    return {
+      appData: null,
+      error: error.message || 'Unable to check application status. Please try again later.',
+      searched: true
+    };
+  }
+};
+
 const Status = () => {
   const [searchParams] = useSearchParams();
   const initialId = searchParams.get('id') || '';
-  const initialSearch = initialId ? findApplication(initialId) : { appData: null, error: '', searched: false };
   
   const [searchInput, setSearchInput] = useState(initialId);
-  const [appData, setAppData] = useState(initialSearch.appData);
-  const [error, setError] = useState(initialSearch.error);
-  const [searched, setSearched] = useState(initialSearch.searched);
+  const [appData, setAppData] = useState(null);
+  const [error, setError] = useState('');
+  const [isSearching, setIsSearching] = useState(Boolean(initialId));
+
+  const runSearch = async (applicationId) => {
+    setIsSearching(true);
+    const result = await fetchApplication(applicationId);
+    setError(result.error);
+    setAppData(result.appData);
+    setIsSearching(false);
+  };
 
   const handleSearch = (e) => {
     e?.preventDefault();
     if (!searchInput.trim()) return;
 
-    const result = findApplication(searchInput);
-    setSearched(result.searched);
-    setError(result.error);
-    setAppData(result.appData);
+    runSearch(searchInput);
   };
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!initialId) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    fetchApplication(initialId).then((result) => {
+      if (!isActive) {
+        return;
+      }
+
+      setError(result.error);
+      setAppData(result.appData);
+      setIsSearching(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [initialId]);
 
   return (
     <main className="min-h-screen bg-slate-50 pt-16 pb-24">
@@ -82,9 +145,10 @@ const Status = () => {
             />
             <button 
               type="submit" 
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-xl flex items-center gap-2 transition-colors shadow-sm"
+              disabled={isSearching}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium px-6 py-3 rounded-xl flex items-center gap-2 transition-colors shadow-sm"
             >
-              <Search size={16} /> <span className="hidden sm:inline">Check Status</span>
+              <Search size={16} /> <span className="hidden sm:inline">{isSearching ? 'Checking...' : 'Check Status'}</span>
             </button>
           </div>
           {error && (
@@ -249,7 +313,7 @@ const Status = () => {
           </motion.div>
         )}
 
-        {searched && !appData && !error && (
+        {isSearching && (
           <div className="text-center text-gray-500 my-10">
             Scanning records...
           </div>

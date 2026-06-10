@@ -38,6 +38,42 @@ cd ..\frontend
 npm install
 ```
 
+## Database Setup
+
+Create a MySQL database named `student_db`:
+
+```sql
+CREATE DATABASE student_db;
+```
+
+Create `backend/.env` from the example file and update the MySQL password if needed:
+
+```powershell
+cd backend
+copy .env.example .env
+```
+
+```env
+PORT=5000
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=student_db
+```
+
+The backend automatically creates the `applications` table when it starts.
+
+Optional frontend API configuration:
+
+```powershell
+cd frontend
+copy .env.example .env
+```
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
+```
+
 ## Run Locally
 
 Start the backend API:
@@ -90,6 +126,8 @@ npm run preview
 
 - `GET /api/health` - API health check
 - `GET /api/announcements` - Announcement data
+- `POST /api/applications` - Save an online admission application to MySQL
+- `GET /api/applications/:applicationId` - Fetch an application by ID for status tracking
 
 ## Build
 
