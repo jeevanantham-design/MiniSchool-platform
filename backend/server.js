@@ -1,7 +1,50 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
+
+// Firebase Configuration
+let db = null;
+let useFirebase = false;
+
+try {
+  const admin = require('firebase-admin');
+  const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
+  
+  console.log('🔍 Initializing Firebase...');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    try {
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      console.log('✅ Service account file loaded');
+      console.log('Project ID:', serviceAccount.project_id);
+      
+      // Initialize Firebase
+      const cert = admin.cert(serviceAccount);
+      const app = admin.initializeApp({
+        credential: cert,
+      });
+      console.log('✅ Firebase Admin App initialized');
+      
+      // Get Firestore instance
+      const { getFirestore } = require('firebase-admin/firestore');
+      db = getFirestore(app);
+      useFirebase = true;
+      
+      console.log('✅✅✅ FIREBASE SUCCESSFULLY INITIALIZED ✅✅✅');
+      console.log('Data will be saved to Firebase Firestore!');
+    } catch (error) {
+      console.error('❌ Firebase initialization failed:', error.message);
+      console.error('Stack:', error.stack);
+    }
+  } else {
+    console.log('❌ Service account file not found at:', serviceAccountPath);
+  }
+} catch (error) {
+  console.error('❌ Firebase module error:', error.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -71,6 +114,18 @@ async function initializeDatabase() {
       status VARCHAR(30) NOT NULL DEFAULT 'Approved',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS contact_messages (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      full_name VARCHAR(120) NOT NULL,
+      email VARCHAR(120) NOT NULL,
+      phone VARCHAR(30) NULL,
+      subject VARCHAR(100) NOT NULL DEFAULT 'General Inquiry',
+      message TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 }
@@ -163,51 +218,95 @@ app.post('/api/applications', async (req, res) => {
   try {
     const applicationId = await generateApplicationId();
 
-    await pool.query(
-      `INSERT INTO applications (
-        application_id,
-        student_name,
-        dob,
-        gender,
-        class_applying,
-        father_name,
-        mother_name,
-        phone,
-        email,
-        address,
-        city,
-        state,
-        pincode,
-        photo_file_name,
-        birth_cert_file_name,
-        marksheet_file_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        applicationId,
-        studentName,
-        dob || null,
-        gender || null,
-        classApplying,
-        fatherName || null,
-        motherName || null,
-        phone || null,
-        email || null,
-        address || null,
-        city || null,
-        state || null,
-        pincode || null,
-        photoFileName || null,
-        birthCertFileName || null,
-        marksheetFileName || null
-      ]
-    );
+    const applicationData = {
+      application_id: applicationId,
+      student_name: studentName,
+      dob: dob || null,
+      gender: gender || null,
+      class_applying: classApplying,
+      father_name: fatherName || null,
+      mother_name: motherName || null,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      city: city || null,
+      state: state || null,
+      pincode: pincode || null,
+      photo_file_name: photoFileName || null,
+      birth_cert_file_name: birthCertFileName || null,
+      marksheet_file_name: marksheetFileName || null,
+      status: 'Approved',
+      created_at: new Date().toISOString(),
+      timestamp: Date.now()
+    };
 
-    const [rows] = await pool.query(
-      'SELECT * FROM applications WHERE application_id = ?',
-      [applicationId]
-    );
+    // Save to Firebase if available
+    if (useFirebase && db) {
+      await db.collection('applications').doc(applicationId).set(applicationData);
+      console.log('✅ Application saved to Firebase');
+    } else {
+      // Save to MySQL
+      await pool.query(
+        `INSERT INTO applications (
+          application_id,
+          student_name,
+          dob,
+          gender,
+          class_applying,
+          father_name,
+          mother_name,
+          phone,
+          email,
+          address,
+          city,
+          state,
+          pincode,
+          photo_file_name,
+          birth_cert_file_name,
+          marksheet_file_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          applicationId,
+          studentName,
+          dob || null,
+          gender || null,
+          classApplying,
+          fatherName || null,
+          motherName || null,
+          phone || null,
+          email || null,
+          address || null,
+          city || null,
+          state || null,
+          pincode || null,
+          photoFileName || null,
+          birthCertFileName || null,
+          marksheetFileName || null
+        ]
+      );
+      console.log('✅ Application saved to MySQL');
+    }
 
-    return res.status(201).json(formatApplication(rows[0]));
+    return res.status(201).json(formatApplication({
+      application_id: applicationId,
+      student_name: studentName,
+      class_applying: classApplying,
+      created_at: new Date(),
+      status: 'Approved',
+      dob,
+      gender,
+      father_name: fatherName,
+      mother_name: motherName,
+      phone,
+      email,
+      address,
+      city,
+      state,
+      pincode,
+      photo_file_name: photoFileName,
+      birth_cert_file_name: birthCertFileName,
+      marksheet_file_name: marksheetFileName
+    }));
   } catch (error) {
     console.error('Application save failed:', error);
     return res.status(500).json({
@@ -218,9 +317,45 @@ app.post('/api/applications', async (req, res) => {
 
 app.get('/api/applications/:applicationId', async (req, res) => {
   try {
+    const applicationId = req.params.applicationId;
+
+    if (useFirebase && db) {
+      const doc = await db.collection('applications').doc(applicationId).get();
+      if (!doc.exists) {
+        return res.status(404).json({
+          message: "We couldn't find an application matching this ID. Please check and try again."
+        });
+      }
+      const data = doc.data();
+      return res.json({
+        id: data.application_id,
+        name: data.student_name,
+        grade: data.class_applying,
+        date: new Date(data.created_at).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric'
+        }),
+        status: data.status,
+        studentName: data.student_name,
+        dob: data.dob,
+        gender: data.gender,
+        classApplying: data.class_applying,
+        fatherName: data.father_name,
+        motherName: data.mother_name,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        photoFileName: data.photo_file_name,
+        birthCertFileName: data.birth_cert_file_name,
+        marksheetFileName: data.marksheet_file_name
+      });
+    }
+
     const [rows] = await pool.query(
       'SELECT * FROM applications WHERE application_id = ?',
-      [req.params.applicationId]
+      [applicationId]
     );
 
     if (rows.length === 0) {
@@ -234,6 +369,53 @@ app.get('/api/applications/:applicationId', async (req, res) => {
     console.error('Application lookup failed:', error);
     return res.status(500).json({
       message: 'Unable to check application status. Please try again later.'
+    });
+  }
+});
+
+// Contact Form Endpoint - Saves to Firebase
+app.post('/api/contact', async (req, res) => {
+  const { fullName, email, phone, subject, message } = req.body;
+
+  if (!fullName || !email || !message) {
+    return res.status(400).json({
+      message: 'Full name, email, and message are required.'
+    });
+  }
+
+  try {
+    const contactData = {
+      fullName,
+      email,
+      phone: phone || '',
+      subject: subject || 'General Inquiry',
+      message,
+      createdAt: new Date().toISOString(),
+      timestamp: Date.now()
+    };
+
+    // Save to Firebase if available
+    if (useFirebase && db) {
+      await db.collection('contact_messages').add(contactData);
+      console.log('✅ Contact message saved to Firebase');
+    } else {
+      // Fallback to MySQL
+      await pool.query(
+        `INSERT INTO contact_messages (full_name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?)`,
+        [fullName, email, phone || null, subject || 'General Inquiry', message]
+      );
+      console.log('✅ Contact message saved to MySQL');
+    }
+
+    return res.status(201).json({
+      message: 'Thank you for contacting us! We will get back to you soon.',
+      success: true
+    });
+  } catch (error) {
+    console.error('Contact message save failed:', error);
+    return res.status(500).json({
+      message: 'Unable to send message. Please try again later.',
+      success: false
     });
   }
 });

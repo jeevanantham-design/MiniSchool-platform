@@ -1,8 +1,10 @@
 // src/components/Announcements.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const announcements = [
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+const defaultAnnouncements = [
   {
     image: "/news1.png",
     date: "EVENTS • MARCH 12, 2024",
@@ -24,6 +26,29 @@ const announcements = [
 ];
 
 const Announcements = () => {
+  const [announcementsList, setAnnouncementsList] = useState(defaultAnnouncements);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/announcements`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          // Normalize dot separator in date if returned with hyphens
+          const normalized = data.map(item => ({
+            ...item,
+            date: item.date ? item.date.replace(' - ', ' • ') : ''
+          }));
+          setAnnouncementsList(normalized);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch announcements from backend, using fallback data:', err);
+      });
+  }, []);
+
   return (
     <section className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -35,9 +60,9 @@ const Announcements = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {announcements.map((news, idx) => (
+          {announcementsList.map((news, idx) => (
             <motion.div 
-              key={idx}
+              key={news.id || idx}
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}

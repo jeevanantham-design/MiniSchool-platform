@@ -39,10 +39,60 @@ const FAQItem = ({ q, a }) => {
   );
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const Contact = () => {
-  const handleSendMessage = (e) => {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    subject: 'General Inquiry',
+    message: ''
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    alert("Thank you! Your message has been sent to the appropriate department. We will get back to you shortly.");
+    if (!formData.fullName || !formData.email || !formData.message) {
+      alert("Please fill in your name, email, and message.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Unable to send message.');
+      }
+
+      alert("Thank you! Your message has been sent to the appropriate department. We will get back to you shortly.");
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        subject: 'General Inquiry',
+        message: ''
+      });
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -172,20 +222,20 @@ const Contact = () => {
                 <form className="space-y-6" onSubmit={handleSendMessage}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Full Name</label>
-                      <input type="text" placeholder="John Doe" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Full Name *</label>
+                      <input required type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="John Doe" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
-                      <input type="email" placeholder="j.doe@example.com" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Email Address *</label>
+                      <input required type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="j.doe@example.com" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
                     </div>
                     <div>
                       <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Phone Number</label>
-                      <input type="tel" placeholder="+1 (555) 000-0000" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
+                      <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="+91 98765 43210" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
                     </div>
                     <div>
                       <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Subject</label>
-                      <select className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors appearance-none cursor-pointer">
+                      <select name="subject" value={formData.subject} onChange={handleInputChange} className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors appearance-none cursor-pointer">
                         <option value="General Inquiry">General Inquiry</option>
                         <option value="Admissions">Admissions</option>
                         <option value="Campus Tour">Campus Tour</option>
@@ -194,11 +244,11 @@ const Contact = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Your Message</label>
-                    <textarea rows="5" placeholder="How can we help you?" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none"></textarea>
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">Your Message *</label>
+                    <textarea required name="message" value={formData.message} onChange={handleInputChange} rows="5" placeholder="How can we help you?" className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none"></textarea>
                   </div>
-                  <button type="submit" className="bg-blue-600 text-white font-semibold flex items-center justify-center px-8 py-3.5 rounded-xl text-sm hover:bg-blue-700 transition shadow-md hover:shadow-lg">
-                    Send Message
+                  <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white font-semibold flex items-center justify-center px-8 py-3.5 rounded-xl text-sm hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg">
+                    {isSubmitting ? 'Sending...' : 'Send Message'}
                   </button>
                 </form>
               </div>

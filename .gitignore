@@ -22,6 +22,9 @@ lerna-debug.log*
 !.env.example
 *.local
 
+# Firebase service account (contains secrets)
+firebase-service-account.json
+
 # Editor and OS files
 .vscode/*
 !.vscode/extensions.json
