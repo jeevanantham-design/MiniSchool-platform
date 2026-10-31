@@ -190,7 +190,7 @@ const Status = () => {
                   <div>
                     <h3 className="text-lg font-bold text-green-900 mb-2">Congratulations! You're In.</h3>
                     <p className="text-xs text-green-800/80 leading-relaxed mb-6 max-w-lg">
-                      Monisha Matriculation School Rendadi is pleased to offer {appData.name.split(' ')[0]} a seat for the 2026-2027 academic year. We were impressed by your academic record and interview performance.
+                      Ayyan Matriculation School is pleased to offer {appData.name.split(' ')[0]} a seat for the 2026-2027 academic year. We were impressed by your academic record and interview performance.
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <button onClick={() => alert("Downloading Admission Letter PDF...")} className="bg-green-600 hover:bg-green-700 text-white font-medium px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-colors shadow-sm">

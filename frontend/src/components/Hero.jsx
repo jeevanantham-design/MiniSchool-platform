@@ -23,7 +23,7 @@ const Hero = () => {
               <span className="text-blue-600">Nurturing Future <br className="hidden md:block"/> Leaders.</span>
             </h1>
             <p className="text-gray-600 text-sm sm:text-base md:text-lg mb-8 leading-relaxed max-w-lg">
-              Experience a world-class education where curiosity meets capability. Join Monisha Matriculation School Rendadi for the academic year 2026-2027 and embark on a journey of discovery.
+              Experience a world-class education where curiosity meets capability. Join Ayyan Matriculation School for the academic year 2026-2027 and embark on a journey of discovery.
             </p>
             <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full">
               <Link to="/apply" className="bg-blue-600 text-white px-8 py-3.5 rounded-full font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg shadow-blue-200 text-sm md:text-base w-full sm:w-auto">

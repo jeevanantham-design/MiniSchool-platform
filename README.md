@@ -1,6 +1,6 @@
 # School Platform
 
-Monisha Matriculation School Rendadi platform is a full-stack school website with a React frontend and an Express backend API. The frontend provides public pages for school information, admissions, application tracking, calendar, and contact details. The backend currently exposes basic health and announcements endpoints.
+Ayyan Matriculation School platform is a full-stack school website with a React frontend and an Express backend API. The frontend provides public pages for school information, admissions, application tracking, calendar, and contact details. The backend currently exposes basic health and announcements endpoints.
 
 ## Tech Stack
 

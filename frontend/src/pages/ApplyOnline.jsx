@@ -52,17 +52,15 @@ const ApplyOnline = () => {
     setIsSubmitting(true);
 
     try {
+      const formPayload = new FormData();
+      Object.entries(formData).forEach(([key, value]) => formPayload.append(key, value));
+      if (files.photo) formPayload.append('photo', files.photo);
+      if (files.birthCert) formPayload.append('birthCert', files.birthCert);
+      if (files.marksheet) formPayload.append('marksheet', files.marksheet);
+
       const response = await fetch(`${API_BASE_URL}/api/applications`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          photoFileName: files.photo?.name || '',
-          birthCertFileName: files.birthCert?.name || '',
-          marksheetFileName: files.marksheet?.name || ''
-        })
+        body: formPayload
       });
 
       const result = await response.json();

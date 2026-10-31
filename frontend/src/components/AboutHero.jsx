@@ -12,7 +12,7 @@ const AboutHero = () => {
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="text-blue-600 font-bold uppercase tracking-widest text-xs mb-4"
           >
-            About Monisha Matriculation School Rendadi
+            About Ayyan Matriculation School
           </motion.p>
           <motion.h1 
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
@@ -44,7 +44,7 @@ const AboutHero = () => {
             </h2>
             <div className="space-y-4 text-gray-600 leading-relaxed text-[15px]">
               <p>
-                Founded in 1985, Monisha Matriculation School Rendadi has grown from a humble institution to a beacon of educational excellence. Over the past four decades, we have remained steadfast in our commitment to nurturing brilliant minds and shaping compassionate leaders. Our journey has been defined by an unwavering dedication to academic rigor, holistic development, and the holistic growth of every child.
+                Founded in 1985, Ayyan Matriculation School has grown from a humble institution to a beacon of educational excellence. Over the past four decades, we have remained steadfast in our commitment to nurturing brilliant minds and shaping compassionate leaders. Our journey has been defined by an unwavering dedication to academic rigor, holistic development, and the holistic growth of every child.
               </p>
               <p>
                 From opening our first digital laboratory to launching international exchange programs, each milestone has been a stepping stone towards redefining modern pedagogy and setting new benchmarks in education.

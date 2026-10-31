@@ -3,7 +3,39 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+const { google } = require('googleapis');
 require('dotenv').config();
+
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowed.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF, JPG, JPEG, PNG files are allowed'));
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 // Firebase Configuration
 let db = null;
@@ -63,6 +95,7 @@ const pool = mysql.createPool(dbConfig);
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 const formatApplication = (row) => ({
   id: row.application_id,
@@ -146,13 +179,105 @@ async function generateApplicationId() {
   return `MMS-2026-${Date.now().toString().slice(-6)}`;
 }
 
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '1d2yvJyA_2zrBSklUBnr9obqtfYvCz7W2FIq5VmJFb-Y';
+const GOOGLE_SHEET_RANGE = process.env.GOOGLE_SHEET_RANGE || 'Sheet1';
+
+function getGoogleSheetCredentials() {
+  const credentialsPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'google-credentials.json');
+
+  if (!fs.existsSync(credentialsPath)) {
+    console.warn('⚠️ Google Sheets credentials file not found at:', credentialsPath);
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+  } catch (error) {
+    console.error('❌ Failed to parse Google Sheets credentials JSON:', error.message);
+    return null;
+  }
+}
+
+async function appendToGoogleSheet(rowValues, sheetName = GOOGLE_SHEET_RANGE) {
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID || GOOGLE_SHEET_ID;
+  if (!spreadsheetId) {
+    console.warn('⚠️ GOOGLE_SHEET_ID is not set. Skipping Google Sheets write.');
+    return;
+  }
+
+  const credentials = getGoogleSheetCredentials();
+  if (!credentials) {
+    console.warn('⚠️ Google Sheets credentials missing. Skipping spreadsheet save.');
+    return;
+  }
+
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
+
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${sheetName}!A1`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: [rowValues]
+      }
+    });
+
+    console.log('✅ Data appended to Google Sheets');
+  } catch (error) {
+    console.error('❌ Failed to append to Google Sheets:', error.message);
+  }
+}
+
+function buildApplicationSheetRow(data) {
+  return [
+    data.application_id || '',
+    data.student_name || '',
+    data.dob || '',
+    data.gender || '',
+    data.class_applying || '',
+    data.father_name || '',
+    data.mother_name || '',
+    data.phone || '',
+    data.email || '',
+    data.address || '',
+    data.city || '',
+    data.state || '',
+    data.pincode || '',
+    data.photo_file_name || '',
+    data.birth_cert_file_name || '',
+    data.marksheet_file_name || '',
+    data.status || '',
+    data.created_at || '',
+    data.timestamp || ''
+  ];
+}
+
+function buildContactSheetRow(data) {
+  return [
+    data.fullName || '',
+    data.email || '',
+    data.phone || '',
+    data.subject || '',
+    data.message || '',
+    data.createdAt || '',
+    data.timestamp || ''
+  ];
+}
+
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({
       status: 'ok',
       database: 'connected',
-      message: 'Monisha Matriculation School API is running smoothly'
+      message: 'Ayyan Matriculation School API is running smoothly'
     });
   } catch (error) {
     res.status(500).json({
@@ -190,7 +315,11 @@ app.get('/api/announcements', (req, res) => {
   res.json(announcements);
 });
 
-app.post('/api/applications', async (req, res) => {
+app.post('/api/applications', upload.fields([
+  { name: 'photo', maxCount: 1 },
+  { name: 'birthCert', maxCount: 1 },
+  { name: 'marksheet', maxCount: 1 }
+]), async (req, res) => {
   const {
     studentName,
     dob,
@@ -203,11 +332,12 @@ app.post('/api/applications', async (req, res) => {
     address,
     city,
     state,
-    pincode,
-    photoFileName,
-    birthCertFileName,
-    marksheetFileName
+    pincode
   } = req.body;
+
+  const photoFileName = req.files?.photo?.[0]?.filename || null;
+  const birthCertFileName = req.files?.birthCert?.[0]?.filename || null;
+  const marksheetFileName = req.files?.marksheet?.[0]?.filename || null;
 
   if (!studentName || !classApplying) {
     return res.status(400).json({
@@ -232,9 +362,9 @@ app.post('/api/applications', async (req, res) => {
       city: city || null,
       state: state || null,
       pincode: pincode || null,
-      photo_file_name: photoFileName || null,
-      birth_cert_file_name: birthCertFileName || null,
-      marksheet_file_name: marksheetFileName || null,
+      photo_file_name: photoFileName,
+      birth_cert_file_name: birthCertFileName,
+      marksheet_file_name: marksheetFileName,
       status: 'Approved',
       created_at: new Date().toISOString(),
       timestamp: Date.now()
@@ -279,13 +409,15 @@ app.post('/api/applications', async (req, res) => {
           city || null,
           state || null,
           pincode || null,
-          photoFileName || null,
-          birthCertFileName || null,
-          marksheetFileName || null
+          photoFileName,
+          birthCertFileName,
+          marksheetFileName
         ]
       );
       console.log('✅ Application saved to MySQL');
     }
+
+    await appendToGoogleSheet(buildApplicationSheetRow(applicationData), GOOGLE_SHEET_RANGE);
 
     return res.status(201).json(formatApplication({
       application_id: applicationId,
@@ -406,6 +538,8 @@ app.post('/api/contact', async (req, res) => {
       );
       console.log('✅ Contact message saved to MySQL');
     }
+
+    await appendToGoogleSheet(buildContactSheetRow(contactData), GOOGLE_SHEET_RANGE);
 
     return res.status(201).json({
       message: 'Thank you for contacting us! We will get back to you soon.',

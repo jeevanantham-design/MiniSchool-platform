@@ -19,7 +19,7 @@ const PrincipalMessage = () => {
                 <div className="w-2 h-10 bg-blue-600 rounded-full"></div>
                 <div>
                   <h4 className="font-bold text-gray-900 text-sm">Dr. Helena Vance</h4>
-                  <p className="text-xs text-gray-500">Principal, Monisha Matriculation School Rendadi</p>
+                  <p className="text-xs text-gray-500">Principal, Ayyan Matriculation School</p>
                 </div>
               </div>
             </motion.div>
@@ -31,7 +31,7 @@ const PrincipalMessage = () => {
               </h2>
               <div className="space-y-4 text-gray-600 leading-relaxed text-sm">
                 <p>
-                  At Monisha Matriculation School Rendadi, we believe that education extends far beyond the four walls of a classroom. It is an intricate, continuous process of sparking curiosity, fostering creativity, and cultivating character that prepares students to lead with empathy and excellence.
+                  At Ayyan Matriculation School, we believe that education extends far beyond the four walls of a classroom. It is an intricate, continuous process of sparking curiosity, fostering creativity, and cultivating character that prepares students to lead with empathy and excellence.
                 </p>
                 <p>
                   We invite you to join our thriving community where every student is encouraged to ask profound questions, explore diverse perspectives, and take meaningful action toward creating a better, more interconnected tomorrow.

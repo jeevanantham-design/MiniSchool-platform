@@ -19,9 +19,9 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           <Link to="/" className="flex-shrink-0 flex items-center gap-2 md:gap-3 max-w-[70vw]">
-            <img src="/logo.png" alt="Monisha Matriculation School Logo" className="h-10 sm:h-[72px] w-auto drop-shadow-sm hover:scale-105 transition-transform duration-300" />
+            <img src="/logo.png" alt="Ayyan Matriculation School Logo" className="h-10 sm:h-[72px] w-auto drop-shadow-sm hover:scale-105 transition-transform duration-300" />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-[11px] sm:text-lg md:text-xl text-[#1a1a1a] tracking-tight leading-none mb-1 truncate whitespace-nowrap overflow-hidden">MONISHA MATRICULATION</span>
+              <span className="font-bold text-[11px] sm:text-lg md:text-xl text-[#1a1a1a] tracking-tight leading-none mb-1 truncate whitespace-nowrap overflow-hidden">AYYAN MATRICULATION SCHOOL</span>
               <span className="font-medium text-[8px] sm:text-xs md:text-sm text-gray-600 tracking-wide uppercase truncate whitespace-nowrap overflow-hidden">School Rendadi</span>
             </div>
           </Link>

@@ -29,7 +29,7 @@ const Highlights = () => {
     <section className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16 max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-[#1a1a1a]">Why Choose Monisha Matriculation School Rendadi?</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#1a1a1a]">Why Choose Ayyan Matriculation School?</h2>
           <div className="w-24 h-1 bg-blue-600 mx-auto mt-6 rounded-full"></div>
         </div>
         

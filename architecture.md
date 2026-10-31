@@ -1,4 +1,4 @@
-# Architecture Documentation: Monisha Matriculation School Rendadi Platform
+# Architecture Documentation: Ayyan Matriculation School Platform
 
 ## 1. System Overview
 

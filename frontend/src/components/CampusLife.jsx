@@ -8,7 +8,7 @@ const CampusLife = () => {
         <div className="flex justify-between items-end mb-12">
           <div>
             <p className="text-blue-600 font-bold uppercase tracking-widest text-xs mb-3">Campus Life</p>
-            <h2 className="text-3xl font-extrabold text-[#1a1a1a]">Life at Monisha Matriculation School Rendadi</h2>
+            <h2 className="text-3xl font-extrabold text-[#1a1a1a]">Life at Ayyan Matriculation School</h2>
           </div>
           <a href="#" className="hidden md:flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors text-sm">
             View All Photos <span className="ml-1">→</span>

@@ -11,12 +11,12 @@ const Welcome = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <p className="text-blue-600 font-bold uppercase tracking-widest text-sm mb-4">Welcome to Monisha Matriculation School Rendadi</p>
+          <p className="text-blue-600 font-bold uppercase tracking-widest text-sm mb-4">Welcome to Ayyan Matriculation School</p>
           <h2 className="text-4xl md:text-5xl font-extrabold text-[#1a1a1a] mb-8">
             A Legacy of Knowledge and Innovation.
           </h2>
           <p className="text-gray-600 text-lg leading-relaxed px-4">
-            Founded on the principles of academic rigor and holistic development, Monisha Matriculation School Rendadi provides a nurturing environment where students are encouraged to think critically, act compassionately, and lead with integrity. Our 20-acre modern campus is home to a diverse community of learners from over 30 countries.
+            Founded on the principles of academic rigor and holistic development, Ayyan Matriculation School provides a nurturing environment where students are encouraged to think critically, act compassionately, and lead with integrity. Our 20-acre modern campus is home to a diverse community of learners from over 30 countries.
           </p>
         </motion.div>
       </div>
