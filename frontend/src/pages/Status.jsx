@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Hash, BadgeCheck, Download, CreditCard, Clock, FileText, CheckCircle2, AlertCircle, Users, Award, ShieldCheck } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const fallbackMock = {
   id: 'MMS-2026-9842',

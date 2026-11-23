@@ -5,7 +5,7 @@ Ayyan Matriculation School platform is a full-stack school website with a React 
 ## Tech Stack
 
 - Frontend: React, Vite, React Router, Tailwind CSS, Framer Motion, Lucide React
-- Backend: Node.js, Express, CORS, dotenv
+- Backend: Node.js, Express, CORS, dotenv, PostgreSQL (`pg`)
 - Package manager: npm
 
 ## Project Structure
@@ -40,13 +40,11 @@ npm install
 
 ## Database Setup
 
-Create a MySQL database named `student_db`:
+The backend uses PostgreSQL. For production, use a Neon PostgreSQL database and provide
+the pooled runtime connection as `DATABASE_URL`. Use the direct connection as `DIRECT_URL`
+when running migrations.
 
-```sql
-CREATE DATABASE student_db;
-```
-
-Create `backend/.env` from the example file and update the MySQL password if needed:
+Create `backend/.env` from the example file:
 
 ```powershell
 cd backend
@@ -55,13 +53,13 @@ copy .env.example .env
 
 ```env
 PORT=5000
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=student_db
+NODE_ENV=development
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+DIRECT_URL=postgresql://user:password@host/database?sslmode=require
+FRONTEND_URL=http://localhost:5173
 ```
 
-The backend automatically creates the `applications` table when it starts.
+Run the idempotent schema migration with `npm run migrate` before starting the backend.
 
 Optional frontend API configuration:
 
@@ -71,7 +69,7 @@ copy .env.example .env
 ```
 
 ```env
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_URL=http://localhost:5000
 ```
 
 ## Run Locally
@@ -126,7 +124,7 @@ npm run preview
 
 - `GET /api/health` - API health check
 - `GET /api/announcements` - Announcement data
-- `POST /api/applications` - Save an online admission application to MySQL
+- `POST /api/applications` - Save an online admission application to PostgreSQL
 - `GET /api/applications/:applicationId` - Fetch an application by ID for status tracking
 
 ## Build

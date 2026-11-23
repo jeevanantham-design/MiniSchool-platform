@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Users, MapPin, FileText, Image as ImageIcon, File, ShieldCheck, Info, Calendar, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const ApplyOnline = () => {
   const [formData, setFormData] = useState({

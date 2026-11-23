@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -37,63 +37,37 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// Firebase Configuration
-let db = null;
-let useFirebase = false;
-
-try {
-  const admin = require('firebase-admin');
-  const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
-  
-  console.log('🔍 Initializing Firebase...');
-  
-  if (fs.existsSync(serviceAccountPath)) {
-    try {
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-      console.log('✅ Service account file loaded');
-      console.log('Project ID:', serviceAccount.project_id);
-      
-      // Initialize Firebase
-      const cert = admin.cert(serviceAccount);
-      const app = admin.initializeApp({
-        credential: cert,
-      });
-      console.log('✅ Firebase Admin App initialized');
-      
-      // Get Firestore instance
-      const { getFirestore } = require('firebase-admin/firestore');
-      db = getFirestore(app);
-      useFirebase = true;
-      
-      console.log('✅✅✅ FIREBASE SUCCESSFULLY INITIALIZED ✅✅✅');
-      console.log('Data will be saved to Firebase Firestore!');
-    } catch (error) {
-      console.error('❌ Firebase initialization failed:', error.message);
-      console.error('Stack:', error.stack);
-    }
-  } else {
-    console.log('❌ Service account file not found at:', serviceAccountPath);
-  }
-} catch (error) {
-  console.error('❌ Firebase module error:', error.message);
-}
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+const db = null;
+const useFirebase = false;
 
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'student_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-};
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required.');
+}
 
-const pool = mysql.createPool(dbConfig);
+const pool = new Pool({
+  connectionString: databaseUrl,
+  max: 10,
+  ssl: databaseUrl.includes('sslmode=require') || process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : undefined,
+});
 
-app.use(cors());
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV !== 'production' && allowedOrigins.length === 0)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origin is not allowed by CORS.'));
+  },
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -124,50 +98,11 @@ const formatApplication = (row) => ({
   marksheetFileName: row.marksheet_file_name
 });
 
-async function initializeDatabase() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS applications (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      application_id VARCHAR(20) NOT NULL UNIQUE,
-      student_name VARCHAR(120) NOT NULL,
-      dob DATE NULL,
-      gender VARCHAR(20) NULL,
-      class_applying VARCHAR(30) NOT NULL,
-      father_name VARCHAR(120) NULL,
-      mother_name VARCHAR(120) NULL,
-      phone VARCHAR(30) NULL,
-      email VARCHAR(120) NULL,
-      address TEXT NULL,
-      city VARCHAR(80) NULL,
-      state VARCHAR(80) NULL,
-      pincode VARCHAR(20) NULL,
-      photo_file_name VARCHAR(255) NULL,
-      birth_cert_file_name VARCHAR(255) NULL,
-      marksheet_file_name VARCHAR(255) NULL,
-      status VARCHAR(30) NOT NULL DEFAULT 'Approved',
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS contact_messages (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      full_name VARCHAR(120) NOT NULL,
-      email VARCHAR(120) NOT NULL,
-      phone VARCHAR(30) NULL,
-      subject VARCHAR(100) NOT NULL DEFAULT 'General Inquiry',
-      message TEXT NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
-
 async function generateApplicationId() {
   for (let attempts = 0; attempts < 10; attempts += 1) {
     const applicationId = `MMS-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const [rows] = await pool.query(
-      'SELECT application_id FROM applications WHERE application_id = ?',
+    const { rows } = await pool.query(
+      'SELECT application_id FROM applications WHERE application_id = $1',
       [applicationId]
     );
 
@@ -183,6 +118,16 @@ const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '1d2yvJyA_2zrBSklUBnr9obq
 const GOOGLE_SHEET_RANGE = process.env.GOOGLE_SHEET_RANGE || 'Sheet1';
 
 function getGoogleSheetCredentials() {
+  const inlineCredentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (inlineCredentials) {
+    try {
+      return JSON.parse(inlineCredentials);
+    } catch (error) {
+      console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:', error.message);
+      return null;
+    }
+  }
+
   const credentialsPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'google-credentials.json');
 
   if (!fs.existsSync(credentialsPath)) {
@@ -375,7 +320,7 @@ app.post('/api/applications', upload.fields([
       await db.collection('applications').doc(applicationId).set(applicationData);
       console.log('✅ Application saved to Firebase');
     } else {
-      // Save to MySQL
+      // Save to PostgreSQL
       await pool.query(
         `INSERT INTO applications (
           application_id,
@@ -394,7 +339,7 @@ app.post('/api/applications', upload.fields([
           photo_file_name,
           birth_cert_file_name,
           marksheet_file_name
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [
           applicationId,
           studentName,
@@ -414,7 +359,7 @@ app.post('/api/applications', upload.fields([
           marksheetFileName
         ]
       );
-      console.log('✅ Application saved to MySQL');
+      console.log('Application saved to PostgreSQL');
     }
 
     await appendToGoogleSheet(buildApplicationSheetRow(applicationData), GOOGLE_SHEET_RANGE);
@@ -485,8 +430,8 @@ app.get('/api/applications/:applicationId', async (req, res) => {
       });
     }
 
-    const [rows] = await pool.query(
-      'SELECT * FROM applications WHERE application_id = ?',
+    const { rows } = await pool.query(
+      'SELECT * FROM applications WHERE application_id = $1',
       [applicationId]
     );
 
@@ -505,7 +450,7 @@ app.get('/api/applications/:applicationId', async (req, res) => {
   }
 });
 
-// Contact Form Endpoint - Saves to Firebase
+// Contact Form Endpoint - Saves to PostgreSQL
 app.post('/api/contact', async (req, res) => {
   const { fullName, email, phone, subject, message } = req.body;
 
@@ -531,12 +476,12 @@ app.post('/api/contact', async (req, res) => {
       await db.collection('contact_messages').add(contactData);
       console.log('✅ Contact message saved to Firebase');
     } else {
-      // Fallback to MySQL
+      // Save to PostgreSQL
       await pool.query(
-        `INSERT INTO contact_messages (full_name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO contact_messages (full_name, email, phone, subject, message) VALUES ($1, $2, $3, $4, $5)`,
         [fullName, email, phone || null, subject || 'General Inquiry', message]
       );
-      console.log('✅ Contact message saved to MySQL');
+      console.log('Contact message saved to PostgreSQL');
     }
 
     await appendToGoogleSheet(buildContactSheetRow(contactData), GOOGLE_SHEET_RANGE);
@@ -554,13 +499,6 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-initializeDatabase()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Database initialization failed:', error);
-    process.exit(1);
-  });
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
+});

@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 **/node_modules/
+**/.npm-cache/
+work-npm-cache/
 
 # Build output
 dist/
